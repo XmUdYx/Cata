@@ -20,6 +20,7 @@
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
 #include "AuthenticationPackets.h"
+#include "BotMgr.h"
 #include "CalendarMgr.h"
 #include "CharacterCache.h"
 #include "CharacterPackets.h"
@@ -996,8 +997,11 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder const& holder)
     ObjectAccessor::AddObject(pCurrChar);
     // LOG_DEBUG("Player %s added to Map.", pCurrChar->GetName().c_str());
     if (m_isBotSession)
+    {
+        sBotMgr->RegisterBot(pCurrChar);
         LOG_INFO("bot", "BotSession: Player %s (%s) is now in world (map %u). PoC bootstrap complete.",
             pCurrChar->GetName().c_str(), pCurrChar->GetGUID().ToString().c_str(), pCurrChar->GetMapId());
+    }
 
     if (pCurrChar->GetGuildId() != 0)
     {
