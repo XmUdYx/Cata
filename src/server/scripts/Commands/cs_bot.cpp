@@ -22,6 +22,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
+#include "Util.h"
 #include "World.h"
 #include "WorldSession.h"
 
@@ -198,21 +199,34 @@ public:
             return true;
         }
 
-        char nameBuf[64];
-        float x, y, z, o = 0.0f;
-
-        // Parse: name x y z [o]
-        int parsed = sscanf(args, "%63s %f %f %f %f", nameBuf, &x, &y, &z, &o);
-        if (parsed < 4)
+        // Split the argument string into tokens so the name and coordinates
+        // are parsed independently – avoids sscanf format-string pitfalls.
+        Tokenizer tokens(std::string(args), ' ');
+        if (tokens.size() < 4)
         {
             handler->SendSysMessage("Usage: .bot move <charname> <x> <y> <z> [<o>]");
             return true;
         }
 
-        std::string charName = NormaliseName(nameBuf);
+        std::string charName = NormaliseName(tokens[0]);
         if (charName.empty())
         {
             handler->SendSysMessage("Usage: .bot move <charname> <x> <y> <z> [<o>]");
+            return true;
+        }
+
+        float x, y, z, o = 0.0f;
+        try
+        {
+            x = std::stof(tokens[1]);
+            y = std::stof(tokens[2]);
+            z = std::stof(tokens[3]);
+            if (tokens.size() >= 5)
+                o = std::stof(tokens[4]);
+        }
+        catch (std::exception const&)
+        {
+            handler->SendSysMessage("Invalid coordinates. Usage: .bot move <charname> <x> <y> <z> [<o>]");
             return true;
         }
 
