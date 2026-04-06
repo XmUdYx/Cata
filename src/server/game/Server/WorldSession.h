@@ -604,6 +604,11 @@ class FC_GAME_API WorldSession {
 
   bool IsConnectionIdle() const { return m_timeOutTime <= 0 && !m_inQueue; }
 
+  // Bot session support (PoC bootstrap)
+  bool IsBotSession() const { return m_isBotSession; }
+  void SetBotSession() { m_isBotSession = true; }
+  void SpawnBotPlayerAsync(ObjectGuid guid);
+
   // Recruit-A-Friend Handling
   uint32 GetRecruiterId() const { return recruiterId; }
   bool IsARecruiter() const { return isRecruiter; }
@@ -1430,6 +1435,7 @@ class FC_GAME_API WorldSession {
   rbac::RBACData* _RBACData;
   uint32 expireTime;
   bool forceExit;
+  bool m_isBotSession; // PoC: true for sessions without a real network socket
   ObjectGuid m_currentBankerGUID;
 
   boost::circular_buffer<std::pair<int64, uint32>>
