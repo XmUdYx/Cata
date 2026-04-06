@@ -777,7 +777,9 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_ANTICHEAT_MANAGER = 1434,
 
     RBCA_PERM_COMMAND_LFG_DEBUG = 1435,
-    RBAC_PERM_COMMAND_BOT_SPAWN = 1436, // PoC bot session bootstrap
+    RBAC_PERM_COMMAND_BOT_SPAWN    = 1436, // PoC bot session bootstrap
+    RBAC_PERM_COMMAND_BOT_DESPAWN  = 1437, // .bot despawn <charname>
+    RBAC_PERM_COMMAND_BOT_MOVE     = 1438, // .bot move <charname> <x> <y> <z>
     RBAC_PERM_MAX
 };
 
