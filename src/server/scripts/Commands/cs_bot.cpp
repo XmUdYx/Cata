@@ -67,13 +67,12 @@ public:
             return true;
         }
 
-        // Normalise to title-case as the DB stores character names
-        if (!charName.empty())
-        {
-            charName[0] = static_cast<char>(std::toupper(charName[0]));
-            for (std::size_t i = 1; i < charName.size(); ++i)
-                charName[i] = static_cast<char>(std::tolower(charName[i]));
-        }
+        // Normalise to title-case as the DB stores character names.
+        // Cast to unsigned char before std::toupper/tolower to avoid UB on
+        // negative char values (non-ASCII input).
+        charName[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(charName[0])));
+        for (std::size_t i = 1; i < charName.size(); ++i)
+            charName[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(charName[i])));
 
         ObjectGuid guid = sCharacterCache->GetCharacterGuidByName(charName);
         if (guid.IsEmpty())
