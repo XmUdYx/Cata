@@ -1147,6 +1147,7 @@ class FC_GAME_API Player : public Unit, public GridObject<Player>
         uint32 options = 0);
     bool TeleportTo(WorldLocation const& loc, uint32 options = 0);
     bool TeleportToBGEntryPoint();
+    void BotRelocate(Position const& dest);
 
     bool HasSummonPending() const;
     void SendSummonRequestFrom(Unit* summoner);
