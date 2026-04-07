@@ -1738,6 +1738,37 @@ void Player::BotRelocate(Position const& dest)
     SetFallInformation(0, GetPositionZ());
 }
 
+bool Player::BotTeleport(uint32 mapId, float x, float y, float z, float orientation)
+{
+    ASSERT(GetSession() && GetSession()->IsBotSession(), "BotTeleport requires a valid bot session");
+
+    // Same-map: just relocate in place, no cross-map machinery needed.
+    if (mapId == GetMapId())
+    {
+        BotRelocate(Position(x, y, z, orientation));
+        return true;
+    }
+
+    // Cross-map: let TeleportTo() set up the transfer state.
+    if (!TeleportTo(mapId, x, y, z, orientation))
+    {
+        LOG_ERROR("bot", "BotTeleport: TeleportTo failed for bot '%s' (map %u -> %u).",
+            GetName().c_str(), GetMapId(), mapId);
+        return false;
+    }
+
+    // TeleportTo() succeeded – the far semaphore must be active.
+    if (!IsBeingTeleportedFar())
+    {
+        LOG_WARN("bot", "BotTeleport: TeleportTo succeeded but far semaphore is not set for bot '%s' (target map %u). Aborting.",
+            GetName().c_str(), mapId);
+        return false;
+    }
+
+    GetSession()->HandleMoveWorldportAck();
+    return true;
+}
+
 bool Player::TeleportToBGEntryPoint()
 {
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID)
