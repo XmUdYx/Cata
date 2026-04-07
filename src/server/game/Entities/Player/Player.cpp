@@ -1718,7 +1718,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options /*= 0*/)
 // a pure server-side commit — using only members accessible from Player.
 void Player::BotRelocate(Position const& dest)
 {
-    ASSERT(GetSession() && GetSession()->IsBotSession(), "BotRelocate called on non-bot player");
+    ASSERT(GetSession() && GetSession()->IsBotSession(), "BotRelocate requires a valid bot session; called on a player without a session or on a non-bot session");
     DisableSpline();                 // stop any active movement spline
     SendTeleportPacket(dest);        // no-op: WorldSession::SendPacket is a no-op on bot sessions
     UpdatePosition(dest, true);      // Player override: also updates zone/area/group flags
