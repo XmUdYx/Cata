@@ -2,10 +2,11 @@
  * This file is part of the FirelandsCore Project. See AUTHORS file for
  * Copyright information.
  *
- * Bot session control layer – GM commands: .bot spawn / despawn / move
+ * Bot session control layer – GM commands: .bot spawn / despawn / move / teleport
  *
  * Phase 1 (bootstrap): .bot spawn
  * Phase 2 (control):   .bot despawn, .bot move
+ * Phase 3 (transport): .bot teleport
  *
  * No AI, no combat, no follow, no quests.
  */
@@ -14,7 +15,9 @@
 #include "Chat.h"
 #include "CharacterCache.h"
 #include "Common.h"
+#include "DBCStores.h"
 #include "Log.h"
+#include "MapManager.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
@@ -64,9 +67,10 @@ public:
     {
         static std::vector<ChatCommand> botCommandTable =
         {
-            { "spawn",   rbac::RBAC_PERM_COMMAND_BOT_SPAWN,   true, &HandleBotSpawnCommand,   "" },
-            { "despawn", rbac::RBAC_PERM_COMMAND_BOT_DESPAWN, true, &HandleBotDespawnCommand, "" },
-            { "move",    rbac::RBAC_PERM_COMMAND_BOT_MOVE,    true, &HandleBotMoveCommand,    "" },
+            { "spawn",    rbac::RBAC_PERM_COMMAND_BOT_SPAWN,    true, &HandleBotSpawnCommand,    "" },
+            { "despawn",  rbac::RBAC_PERM_COMMAND_BOT_DESPAWN,  true, &HandleBotDespawnCommand,  "" },
+            { "move",     rbac::RBAC_PERM_COMMAND_BOT_MOVE,     true, &HandleBotMoveCommand,     "" },
+            { "teleport", rbac::RBAC_PERM_COMMAND_BOT_TELEPORT, true, &HandleBotTeleportCommand, "" },
         };
 
         static std::vector<ChatCommand> commandTable =
@@ -265,6 +269,96 @@ public:
         bot->BotRelocate(Position(x, y, z, o));
 
         handler->PSendSysMessage("Bot '%s' moved to (%.2f, %.2f, %.2f).", charName.c_str(), x, y, z);
+        return true;
+    }
+
+    // -----------------------------------------------------------------------
+    // .bot teleport <charname> <mapId> <x> <y> <z> [<o>]
+    //
+    // Teleports a bot to the given coordinates, which may be on a different
+    // map.  Same-map destinations are handled via BotRelocate; cross-map
+    // destinations go through the standard TeleportTo / HandleMoveWorldportAck
+    // path synchronously.
+    // -----------------------------------------------------------------------
+    static bool HandleBotTeleportCommand(ChatHandler* handler, char const* args)
+    {
+        if (!args || !*args)
+        {
+            handler->SendSysMessage("Usage: .bot teleport <charname> <mapId> <x> <y> <z> [<o>]");
+            return true;
+        }
+
+        Tokenizer tokens(std::string(args), ' ');
+        if (tokens.size() < 5)
+        {
+            handler->SendSysMessage("Usage: .bot teleport <charname> <mapId> <x> <y> <z> [<o>]");
+            return true;
+        }
+
+        std::string charName = NormaliseName(tokens[0]);
+        if (charName.empty())
+        {
+            handler->SendSysMessage("Usage: .bot teleport <charname> <mapId> <x> <y> <z> [<o>]");
+            return true;
+        }
+
+        uint32 mapId;
+        float x, y, z, o = 0.0f;
+        try
+        {
+            mapId = static_cast<uint32>(std::stoul(tokens[1]));
+            x = std::stof(tokens[2]);
+            y = std::stof(tokens[3]);
+            z = std::stof(tokens[4]);
+            if (tokens.size() >= 6)
+                o = std::stof(tokens[5]);
+        }
+        catch (std::exception const&)
+        {
+            handler->SendSysMessage("Invalid arguments. Usage: .bot teleport <charname> <mapId> <x> <y> <z> [<o>]");
+            return true;
+        }
+
+        MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
+        if (!mapEntry)
+        {
+            handler->PSendSysMessage("Unknown map %u.", mapId);
+            return true;
+        }
+
+        if (mapEntry->IsBattlegroundOrArena())
+        {
+            handler->PSendSysMessage("Battleground/arena maps are not supported for bot teleport.");
+            return true;
+        }
+
+        if (mapEntry->IsDungeon())
+        {
+            handler->PSendSysMessage("Instance maps are not supported for bot teleport.");
+            return true;
+        }
+
+        if (!MapManager::IsValidMapCoord(mapId, x, y, z, o))
+        {
+            handler->PSendSysMessage("Invalid coordinates for map %u.", mapId);
+            return true;
+        }
+
+        Player* bot = sBotMgr->GetBotByName(charName);
+        if (!bot)
+        {
+            handler->PSendSysMessage("No active bot named '%s'.", charName.c_str());
+            return true;
+        }
+
+        LOG_INFO("bot", "BotMgr: GM '%s' teleporting bot '%s' to map %u (%.2f, %.2f, %.2f, o=%.2f).",
+            handler->GetNameLink().c_str(), charName.c_str(), mapId, x, y, z, o);
+
+        if (bot->BotTeleport(mapId, x, y, z, o))
+            handler->PSendSysMessage("Bot '%s' teleported to map %u (%.2f, %.2f, %.2f).", charName.c_str(), mapId, x, y, z);
+        else
+            handler->PSendSysMessage("Teleport failed for bot '%s'. See server log for details.", charName.c_str());
+
         return true;
     }
 };
