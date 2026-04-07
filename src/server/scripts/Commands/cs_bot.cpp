@@ -237,6 +237,28 @@ public:
             return true;
         }
 
+        // .bot move is same-map only. Verify the invoker is on the same map as
+        // the bot before relocating, so cross-map coordinates are rejected early.
+        Player* gmPlayer = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+        if (!gmPlayer)
+        {
+            handler->SendSysMessage(".bot move requires an in-game GM (no console support).");
+            return true;
+        }
+
+        if (gmPlayer->GetMapId() != bot->GetMapId())
+        {
+            handler->PSendSysMessage(
+                "Cannot move bot '%s': bot is on map %u but you are on map %u. "
+                ".bot move is same-map only.",
+                charName.c_str(), bot->GetMapId(), gmPlayer->GetMapId());
+            LOG_WARN("bot", "BotMgr: GM '%s' attempted cross-map move of bot '%s' "
+                "(GM map %u -> bot map %u) – rejected.",
+                handler->GetNameLink().c_str(), charName.c_str(),
+                gmPlayer->GetMapId(), bot->GetMapId());
+            return true;
+        }
+
         LOG_INFO("bot", "BotMgr: GM '%s' moving bot '%s' to (%.2f, %.2f, %.2f, o=%.2f).",
             handler->GetNameLink().c_str(), charName.c_str(), x, y, z, o);
 
