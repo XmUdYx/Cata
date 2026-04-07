@@ -1719,10 +1719,21 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options /*= 0*/)
 void Player::BotRelocate(Position const& dest)
 {
     ASSERT(GetSession() && GetSession()->IsBotSession(), "BotRelocate requires a valid bot session; called on a player without a session or on a non-bot session");
-    DisableSpline();                 // stop any active movement spline
-    SendTeleportPacket(dest);        // no-op: WorldSession::SendPacket is a no-op on bot sessions
-    UpdatePosition(dest, true);      // Player override: also updates zone/area/group flags
-    UpdateObjectVisibilityOnCreate(); // broadcast CREATE to surrounding players at the new position
+    DisableSpline();
+
+    // Mirror canonical HandleMoveTeleportAck flow (MovementHandler.cpp):
+    // 1. Sync m_movementInfo.pos so all server-side readers agree on position.
+    // 2. Broadcast SMSG_MOVE_UPDATE_TELEPORT to nearby players.
+    // 3. Update internal position + grid/cell (Map::PlayerRelocation handles
+    //    deferred UpdateObjectVisibility – no extra visibility call needed here).
+    // 4. Reset fall-tracking to the new Z.
+    WorldPackets::Movement::MoveUpdateTeleport moveUpdateTeleport;
+    moveUpdateTeleport.Status = &m_movementInfo;
+    moveUpdateTeleport.Status->pos.Relocate(dest);
+    SendMessageToSet(moveUpdateTeleport.Write(), false);
+
+    UpdatePosition(dest, true);
+    SetFallInformation(0, GetPositionZ());
 }
 
 bool Player::TeleportToBGEntryPoint()
