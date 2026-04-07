@@ -1722,7 +1722,7 @@ void Player::BotRelocate(Position const& dest)
     DisableSpline();                 // stop any active movement spline
     SendTeleportPacket(dest);        // no-op: WorldSession::SendPacket is a no-op on bot sessions
     UpdatePosition(dest, true);      // Player override: also updates zone/area/group flags
-    UpdateObjectVisibility();        // Player override: rebuilds visibility for surrounding objects
+    UpdateObjectVisibilityOnCreate(); // broadcast CREATE to surrounding players at the new position
 }
 
 bool Player::TeleportToBGEntryPoint()
