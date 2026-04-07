@@ -1708,6 +1708,23 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options /*= 0*/)
     return TeleportTo(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(), loc.GetPositionZ(), loc.GetOrientation(), options);
 }
 
+// Server-side relocation for socket-less bot sessions.
+// Player::TeleportTo() / Unit::NearTeleportTo() cannot be used here because
+// the near-teleport path sends SMSG_MOVE_TELEPORT and then waits for a
+// CMSG_MOVE_TELEPORT_ACK from the client before committing the new position.
+// A bot session has no real socket, so that ACK never arrives and the bot
+// would be stuck indefinitely in IsBeingTeleportedNear().
+// This method replicates the non-Player branch of Unit::NearTeleportTo() —
+// a pure server-side commit — using only members accessible from Player.
+void Player::BotRelocate(Position const& dest)
+{
+    ASSERT(GetSession() && GetSession()->IsBotSession(), "BotRelocate requires a valid bot session; called on a player without a session or on a non-bot session");
+    DisableSpline();                 // stop any active movement spline
+    SendTeleportPacket(dest);        // no-op: WorldSession::SendPacket is a no-op on bot sessions
+    UpdatePosition(dest, true);      // Player override: also updates zone/area/group flags
+    UpdateObjectVisibility();        // Player override: rebuilds visibility for surrounding objects
+}
+
 bool Player::TeleportToBGEntryPoint()
 {
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID)

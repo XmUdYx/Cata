@@ -188,7 +188,7 @@ public:
     // -----------------------------------------------------------------------
     // .bot move <charname> <x> <y> <z> [<o>]
     //
-    // Repositions a bot on its current map via NearTeleportTo (server-side
+    // Repositions a bot on its current map via Player::BotRelocate (server-side
     // only, no pathfinding, no client packets).
     // -----------------------------------------------------------------------
     static bool HandleBotMoveCommand(ChatHandler* handler, char const* args)
@@ -240,20 +240,7 @@ public:
         LOG_INFO("bot", "BotMgr: GM '%s' moving bot '%s' to (%.2f, %.2f, %.2f, o=%.2f).",
             handler->GetNameLink().c_str(), charName.c_str(), x, y, z, o);
 
-        // Player::NearTeleportTo() stages a near-teleport that waits for
-        // CMSG_MOVE_TELEPORT_ACK from the client before committing the new
-        // position.  A bot session has no real socket, so that ACK packet
-        // never arrives and the bot gets stuck in IsBeingTeleportedNear().
-        //
-        // Instead we replicate the non-Player branch of NearTeleportTo():
-        //   DisableSpline + SendTeleportPacket (no-op for bots) + UpdatePosition
-        //   + UpdateObjectVisibility.
-        // This is a pure server-side commit with no client round-trip.
-        Position dest(x, y, z, o);
-        bot->DisableSpline();
-        bot->SendTeleportPacket(dest);   // no-op: SendPacket is a no-op on bot sessions
-        bot->UpdatePosition(dest, true);
-        bot->UpdateObjectVisibility();
+        bot->BotRelocate(Position(x, y, z, o));
 
         handler->PSendSysMessage("Bot '%s' moved to (%.2f, %.2f, %.2f).", charName.c_str(), x, y, z);
         return true;
