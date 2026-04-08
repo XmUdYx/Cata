@@ -665,7 +665,11 @@ INSERT INTO `rbac_permissions` (`id`, `name`) VALUES
 	(872, 'Command: server debug'),
 	(873, 'Command: reload creature_movement_override'),
 	(874, 'Command: npc reload'),
-	(1434,'Command: anticheat');
+	(1434,'Command: anticheat'),
+	(1436,'Command: bot spawn'),
+	(1437,'Command: bot despawn'),
+	(1438,'Command: bot move'),
+	(1439,'Command: bot teleport');
 
 /*!40000 ALTER TABLE `rbac_permissions` ENABLE KEYS */;
 
